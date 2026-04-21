@@ -1,64 +1,55 @@
 
-# Trust Score — المرحلة الأولى
+# ربط Trust Score Hub بـ Pi و Supabase الخارجي
 
-تطبيق ويب React + TypeScript + Tailwind بثيم داكن، يدعم 3 لغات (AR/EN/FR) مع RTL تلقائي للعربية، ولون أساسي برتقالي `#FF9A2A`.
+## ملاحظات مهمة قبل التنفيذ
 
-## 1. الإعداد الأساسي
-- React + TS + Tailwind + react-router + recharts.
-- نظام i18n (react-i18next) مع زر تبديل اللغة في الهيدر (AR/EN/FR) وحفظ الاختيار في localStorage.
-- اتجاه الصفحة `dir="rtl"` تلقائياً للعربية.
-- ثيم داكن افتراضي: خلفية متدرجة داكنة، بطاقات زجاجية (glass/blur)، أزرار برتقالية `#FF9A2A`، خطوط نظيفة (Inter + Cairo للعربية).
-- ربط Supabase خارجي: ستزوّدني بـ URL والمفتاح العام، وسأنشئ عميل Supabase وملف SQL للجداول والسياسات.
+1. **المتغيرات التي شاركتها علنياً**: المفاتيح أعلاه أصبحت مكشوفة في المحادثة. `VITE_SUPABASE_ANON_KEY` و `VITE_PI_APP_ID` آمنة للنشر العام (publishable). لكن `VITE_PI_API_KEY` يبدو أنه **مفتاح Pi API الخاص بالخادم** — هذا المفتاح يجب ألا يُكشف في كود الواجهة (أي متغير `VITE_*` يُحزَّم في الـ bundle ويراه أي مستخدم). أنصح بشدة بإلغائه (rotate) من لوحة Pi Developer وإصدار مفتاح جديد لاحقاً عند بناء التحقق من المدفوعات في الخادم.
 
-## 2. المصادقة عبر Pi Browser
-- صفحة هبوط بزر **"Sign in with Pi"** يستدعي `window.Pi.authenticate(['username'], onIncompletePaymentFound)`.
-- تهيئة `Pi.init({ version: "2.0", sandbox: true, appId })` باستخدام App ID الذي ستزوّدني به.
-- رسالة بديلة عند فتح التطبيق خارج Pi Browser.
-- بعد نجاح المصادقة:
-  - فحص `profiles.privacy_accepted`.
-  - إذا = false → عرض **Modal سياسة الخصوصية** (لا يمكن إغلاقها بالنقر خارجها أو ESC) مع زر "أوافق" فقط.
-  - عند الموافقة: تحديث `privacy_accepted=true` ثم الانتقال للوحة التحكم.
+2. **Lovable Cloud و GitHub**: لا أملك أداة لتعطيل Lovable Cloud أو ربط GitHub برمجياً. يجب أن تقوم بهما يدوياً:
+   - **تعطيل Cloud**: من واجهة Lovable → أعلى الصفحة → Cloud → Settings → Disable Lovable Cloud.
+   - **ربط GitHub**: من Connectors في الشريط الجانبي → GitHub → Connect project → اختر الحساب → Create Repository. بعدها سيظهر رابط المستودع تلقائياً في أعلى المحرر.
 
-## 3. قاعدة البيانات (Supabase)
-جدول `profiles`:
-- `id` (uuid, PK)
-- `pi_user_id` (text, unique)
-- `username` (text)
-- `privacy_accepted` (bool, default false)
-- `trust_score` (int, default 500)
-- `created_at` (timestamptz)
+## ما سأنفذه في الكود
 
-سياسات RLS:
-- قراءة عامة للملفات (للملف الشخصي العام لاحقاً).
-- تحديث: المالك فقط (`auth.uid() = id` أو عبر تطابق `pi_user_id`).
-- إنشاء: عند أول تسجيل دخول (upsert).
+### 1. ملف `.env` في جذر المشروع
+إنشاء `.env` يحتوي على المتغيرات الثلاثة الآمنة فقط (سأستثني `VITE_PI_API_KEY` لأنه سري — لا مكان آمن له في تطبيق العميل):
+```
+VITE_PI_APP_ID=trust-score-hub
+VITE_SUPABASE_URL=https://qtakxhpkkijppceyzdsl.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_zRpo5TqiHa6NJxxLQQAiAQ_jhX2EXED
+```
+وإضافة `.env` إلى `.gitignore` (سيُلتزم فقط بـ `.env.example` كقالب).
 
-## 4. لوحة التحكم (Dashboard)
-- **بطاقة درجة الثقة**: رقم كبير من Supabase + شارت دائري (recharts RadialBarChart) بلون يتدرج حسب القيمة (أحمر <300 / برتقالي 300–700 / أخضر >700).
-- **آخر 5 تقييمات وهمية**: قائمة بطاقات تعرض المُقيِّم، التغيير (+/−)، تعليق قصير، التاريخ.
-- زر **"عرض ملفي الشخصي"** → `/profile/me`.
-- زر تسجيل الخروج + مبدّل اللغة في الهيدر.
+### 2. عميل Supabase الجديد
+إنشاء `src/lib/supabase.ts`:
+- يقرأ `VITE_SUPABASE_URL` و `VITE_SUPABASE_ANON_KEY` من `import.meta.env`.
+- يصدّر `supabase` client باستخدام `@supabase/supabase-js` (مثبّت سابقاً).
 
-## 5. صفحة الملف الشخصي (`/profile/me`)
-- اسم المستخدم، الـ Pi username، تاريخ الانضمام.
-- درجة الثقة + عدد التقييمات (وهمي حالياً).
-- **شارة الحالة**:
-  - >700 → "شارة النقاء" (أيقونة درع أخضر).
-  - <300 → "شارة التحذير" (أيقونة تحذير حمراء).
-  - بينهما → بدون شارة.
-  - مع نص قصير: "مدعومة بتحليل المجتمع + تقييم AI" (محاكاة AI = قيمة عشوائية ثابتة لكل مستخدم).
-- **رسم خطي** (recharts LineChart) لتطور الدرجة خلال 6 أشهر — بيانات وهمية مولّدة حول الدرجة الحالية.
-- زر رجوع للوحة التحكم.
+### 3. مخطط قاعدة البيانات (تشغّله أنت يدوياً في Supabase SQL Editor)
+سأضع الـ SQL في ملف `supabase/schema.sql` في المشروع للرجوع إليه:
+- جدول `profiles` بالأعمدة المتفق عليها سابقاً.
+- تفعيل RLS + سياسات: قراءة عامة، تحديث/إدراج للمالك عبر تطابق `pi_user_id`.
+- لا يستخدم `auth.uid()` لأن المصادقة تتم عبر Pi لا عبر Supabase Auth (في هذه المرحلة سنعتمد على anon key مع سياسات تسمح بالكتابة المقيدة بـ `pi_user_id` المُمرَّر — مع الإقرار بأن هذا غير آمن للإنتاج وسنعزّزه بـ Edge Function لاحقاً).
 
-## 6. ما هو خارج هذه المرحلة
-- البحث عن مستخدمين آخرين / صفحة `/profile/:username` العامة.
-- نظام التقييم الفعلي (التقييمات وهمية).
-- التوكن والاشتراك الشهري.
-- AI حقيقي (محاكاة فقط).
+### 4. تحديث `src/lib/auth.ts`
+استبدال التخزين المحلي (`localStorage`) بقراءة/كتابة من جدول `profiles` في Supabase:
+- `upsertFromPi(uid, username)` → `supabase.from('profiles').upsert(...)` بناءً على `pi_user_id`.
+- `getProfile()` → استعلام بواسطة `pi_user_id` المخزَّن في `localStorage` كمعرّف جلسة فقط.
+- `acceptPrivacy()` → `update({ privacy_accepted: true })`.
+- `clearProfile()` → مسح معرّف الجلسة من `localStorage`.
+- جميع الدوال تصبح `async`؛ سأحدّث `Index.tsx`, `Dashboard.tsx`, `Profile.tsx` لاستخدام `await` و `useEffect` async.
 
-## 7. ما أحتاجه منك بعد الموافقة
-1. Supabase URL + anon key.
-2. Pi App ID.
-3. ربط GitHub من واجهة Lovable (Connectors → GitHub) — ثم سأشارك الرابط.
+### 5. تحديث `src/lib/pi.ts`
+- `PI_APP_ID` يُقرأ بالفعل من `VITE_PI_APP_ID` — يعمل تلقائياً بعد إنشاء `.env`.
+- إبقاء `sandbox: true`.
+- لن أستخدم `VITE_PI_API_KEY` في كود العميل (راجع التحذير أعلاه).
 
-> ملاحظة: طلبت تعطيل Lovable Cloud — سأبقيه معطلاً وأستخدم مشروع Supabase الخارجي الذي ستزوّدني به.
+### 6. ملف `.env.example`
+نسخة بدون قيم لتوثيق المتغيرات المطلوبة في GitHub.
+
+## ما تحتاج فعله بعد موافقتك على الخطة
+
+1. **عطّل Lovable Cloud يدوياً** من إعدادات Cloud.
+2. **اربط GitHub يدوياً** من Connectors → GitHub.
+3. **افتح Supabase SQL Editor** ونفّذ محتوى `supabase/schema.sql` الذي سأنشئه.
+4. **(موصى به)** ألغِ `VITE_PI_API_KEY` الحالي من Pi Developer Portal لأنه أصبح مكشوفاً.
