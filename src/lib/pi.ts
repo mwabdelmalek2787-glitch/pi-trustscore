@@ -1,0 +1,40 @@
+// Pi Network SDK helpers
+declare global {
+  interface Window {
+    Pi?: {
+      init: (opts: { version: string; sandbox?: boolean; appId?: string }) => void;
+      authenticate: (
+        scopes: string[],
+        onIncompletePaymentFound: (payment: unknown) => void,
+      ) => Promise<{ accessToken: string; user: { uid: string; username: string } }>;
+    };
+  }
+}
+
+// TODO: replace with the real Pi App ID once provided.
+const PI_APP_ID = (import.meta.env.VITE_PI_APP_ID as string | undefined) ?? "";
+const SANDBOX = true;
+
+let initialized = false;
+
+export function isPiBrowser() {
+  return typeof window !== "undefined" && !!window.Pi;
+}
+
+export function ensurePiInit() {
+  if (!isPiBrowser() || initialized) return;
+  try {
+    window.Pi!.init({ version: "2.0", sandbox: SANDBOX, appId: PI_APP_ID || undefined });
+    initialized = true;
+  } catch (e) {
+    console.error("Pi.init failed", e);
+  }
+}
+
+export async function piAuthenticate() {
+  if (!isPiBrowser()) throw new Error("PI_BROWSER_REQUIRED");
+  ensurePiInit();
+  return window.Pi!.authenticate(["username"], (payment) => {
+    console.warn("Incomplete payment found", payment);
+  });
+}
