@@ -1,25 +1,34 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { TrustGauge } from "@/components/TrustGauge";
-import { clearProfile, getProfile } from "@/lib/auth";
+import { clearProfile, getProfile, type Profile } from "@/lib/auth";
 import { recentRatings } from "@/lib/mock";
 import { ArrowRight, LogOut, MessageSquare, TrendingDown, TrendingUp } from "lucide-react";
 
 const Dashboard = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const profile = getProfile();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!profile || !profile.privacy_accepted) navigate("/", { replace: true });
-  }, [profile, navigate]);
+    (async () => {
+      const p = await getProfile();
+      if (!p || !p.privacy_accepted) {
+        navigate("/", { replace: true });
+        return;
+      }
+      setProfile(p);
+      setLoading(false);
+    })();
+  }, [navigate]);
 
   const ratings = useMemo(() => (profile ? recentRatings(profile.pi_user_id) : []), [profile]);
 
-  if (!profile) return null;
+  if (loading || !profile) return null;
 
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString(i18n.language, { month: "short", day: "numeric" });

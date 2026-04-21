@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
-import { getProfile } from "@/lib/auth";
+import { getProfile, type Profile as ProfileT } from "@/lib/auth";
 import { aiSentiment, recentRatings, scoreHistory } from "@/lib/mock";
 import { scoreColor } from "@/components/TrustGauge";
 import { AlertTriangle, ArrowLeft, Calendar, ShieldCheck, Sparkles } from "lucide-react";
@@ -20,11 +20,20 @@ import { AlertTriangle, ArrowLeft, Calendar, ShieldCheck, Sparkles } from "lucid
 const Profile = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const profile = getProfile();
+  const [profile, setProfile] = useState<ProfileT | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!profile || !profile.privacy_accepted) navigate("/", { replace: true });
-  }, [profile, navigate]);
+    (async () => {
+      const p = await getProfile();
+      if (!p || !p.privacy_accepted) {
+        navigate("/", { replace: true });
+        return;
+      }
+      setProfile(p);
+      setLoading(false);
+    })();
+  }, [navigate]);
 
   const data = useMemo(
     () => (profile ? scoreHistory(profile.pi_user_id, profile.trust_score) : []),
@@ -33,7 +42,7 @@ const Profile = () => {
   const ratings = useMemo(() => (profile ? recentRatings(profile.pi_user_id) : []), [profile]);
   const ai = profile ? aiSentiment(profile.pi_user_id) : 0.5;
 
-  if (!profile) return null;
+  if (loading || !profile) return null;
 
   const score = profile.trust_score;
   const showPure = score > 700 && ai > 0.5;

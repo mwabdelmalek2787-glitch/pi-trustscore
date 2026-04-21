@@ -21,9 +21,11 @@ const Index = () => {
   }, []);
 
   useEffect(() => {
-    const p = getProfile();
-    if (p?.privacy_accepted) navigate("/dashboard", { replace: true });
-    else if (p && !p.privacy_accepted) setShowPrivacy(true);
+    (async () => {
+      const p = await getProfile();
+      if (p?.privacy_accepted) navigate("/dashboard", { replace: true });
+      else if (p && !p.privacy_accepted) setShowPrivacy(true);
+    })();
   }, [navigate]);
 
   const handleSignIn = async () => {
@@ -31,13 +33,13 @@ const Index = () => {
     try {
       if (!inPi) {
         // Dev fallback so UI is testable outside Pi Browser
-        const mock = upsertFromPi("dev-uid-001", "dev_user");
+        const mock = await upsertFromPi("dev-uid-001", "dev_user");
         if (mock.privacy_accepted) navigate("/dashboard");
         else setShowPrivacy(true);
         return;
       }
       const auth = await piAuthenticate();
-      const p = upsertFromPi(auth.user.uid, auth.user.username);
+      const p = await upsertFromPi(auth.user.uid, auth.user.username);
       if (p.privacy_accepted) navigate("/dashboard");
       else setShowPrivacy(true);
     } catch (e) {
@@ -48,8 +50,8 @@ const Index = () => {
     }
   };
 
-  const onAccept = () => {
-    acceptPrivacy();
+  const onAccept = async () => {
+    await acceptPrivacy();
     setShowPrivacy(false);
     navigate("/dashboard");
   };
