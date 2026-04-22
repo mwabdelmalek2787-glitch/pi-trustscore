@@ -119,6 +119,11 @@ const resources = {
           "En utilisant Trust Score, vous acceptez de partager votre nom d'utilisateur Pi pour créer votre profil public de réputation. Nous n'accédons pas à votre portefeuille, paiements ou clés privées. Nous stockons uniquement votre nom d'utilisateur, votre score et vos évaluations. Vous pouvez demander la suppression à tout moment.",
         agree: "J'accepte et continuer",
       },
+      auth: {
+        piRequired: "Cette application doit être ouverte dans Pi Browser pour se connecter.",
+        signInFailed: "Échec de la connexion Pi. Veuillez réessayer.",
+        welcome: "Bienvenue, @{{username}}",
+      },
       dashboard: {
         title: "Tableau de bord",
         trustScore: "Score de confiance",
