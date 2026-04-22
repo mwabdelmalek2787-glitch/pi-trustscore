@@ -20,6 +20,11 @@ const resources = {
           "By using Trust Score, you agree to share your Pi username with us to create your public reputation profile. We do not access your wallet, payments, or private keys. We store only your username, trust score, and ratings activity. You can request deletion at any time.",
         agree: "I Agree & Continue",
       },
+      auth: {
+        piRequired: "This app must be opened inside Pi Browser to sign in.",
+        signInFailed: "Pi sign-in failed. Please try again.",
+        welcome: "Welcome, @{{username}}",
+      },
       dashboard: {
         title: "Dashboard",
         trustScore: "Trust Score",
@@ -63,6 +68,11 @@ const resources = {
         body:
           "باستخدامك تطبيق درجة الثقة، فإنك توافق على مشاركة اسم مستخدم Pi معنا لإنشاء ملفك العام للسمعة. لا نصل إلى محفظتك أو مدفوعاتك أو مفاتيحك الخاصة. نخزّن فقط اسم المستخدم، درجة الثقة، ونشاط التقييمات. يمكنك طلب الحذف في أي وقت.",
         agree: "أوافق وأتابع",
+      },
+      auth: {
+        piRequired: "هذا التطبيق يتطلب فتحه داخل Pi Browser لتسجيل الدخول.",
+        signInFailed: "فشل تسجيل الدخول عبر Pi. حاول مرة أخرى.",
+        welcome: "مرحباً، @{{username}}",
       },
       dashboard: {
         title: "لوحة التحكم",
@@ -108,6 +118,11 @@ const resources = {
         body:
           "En utilisant Trust Score, vous acceptez de partager votre nom d'utilisateur Pi pour créer votre profil public de réputation. Nous n'accédons pas à votre portefeuille, paiements ou clés privées. Nous stockons uniquement votre nom d'utilisateur, votre score et vos évaluations. Vous pouvez demander la suppression à tout moment.",
         agree: "J'accepte et continuer",
+      },
+      auth: {
+        piRequired: "Cette application doit être ouverte dans Pi Browser pour se connecter.",
+        signInFailed: "Échec de la connexion Pi. Veuillez réessayer.",
+        welcome: "Bienvenue, @{{username}}",
       },
       dashboard: {
         title: "Tableau de bord",

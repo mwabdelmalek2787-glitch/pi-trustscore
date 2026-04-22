@@ -32,19 +32,26 @@ const Index = () => {
     setLoading(true);
     try {
       if (!inPi) {
-        // Dev fallback so UI is testable outside Pi Browser
+        console.warn("[Index] Not in Pi Browser — using dev fallback");
+        toast.info(t("landing.outsidePi"));
         const mock = await upsertFromPi("dev-uid-001", "dev_user");
         if (mock.privacy_accepted) navigate("/dashboard");
         else setShowPrivacy(true);
         return;
       }
+      console.log("[Index] Calling Pi.authenticate(['username','payments'])");
       const auth = await piAuthenticate();
+      console.log("[Index] Pi auth success:", auth.user);
       const p = await upsertFromPi(auth.user.uid, auth.user.username);
+      toast.success(t("auth.welcome", { username: auth.user.username }));
       if (p.privacy_accepted) navigate("/dashboard");
       else setShowPrivacy(true);
     } catch (e) {
-      console.error(e);
-      toast.error("Pi sign-in failed");
+      console.error("[Index] Sign-in failed", e);
+      const msg = e instanceof Error && e.message === "PI_BROWSER_REQUIRED"
+        ? t("auth.piRequired")
+        : t("auth.signInFailed");
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
