@@ -11,10 +11,9 @@ export const supabase = createClient(url, anon, {
 });
 
 export type ProfileRow = {
-  id: string;
   pi_user_id: string;
   username: string;
-  privacy_accepted: boolean;
   trust_score: number;
   created_at: string;
+  privacy_accepted: boolean;
 };
