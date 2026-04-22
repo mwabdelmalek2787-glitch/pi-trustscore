@@ -1,46 +1,49 @@
 
 
-# خطة: تفعيل تسجيل الدخول عبر Pi SDK (Sandbox)
+# ربط Supabase وإنشاء جدول `profiles`
 
-## المشكلة الحالية
-- `src/lib/pi.ts` يطلب صلاحية `username` فقط — يحتاج إضافة `payments`.
-- `index.html` لا يحمّل Pi SDK script، لذا `window.Pi` غير موجود حتى داخل Pi Browser.
-- لا توجد رسالة خطأ مرئية واضحة عند فشل المصادقة (فقط `toast` عام).
-- اسم المستخدم لا يُعرض بشكل بارز في `Dashboard` بعد تسجيل الدخول.
+## الوضع الحالي
+- `src/lib/supabase.ts` متصل بمشروع Supabase (`qtakxhpkkijppceyzdsl`) باستخدام publishable anon key.
+- `supabase/schema.sql` يحتوي بالفعل على تعريف جدول `profiles` لكن **لم يُنفَّذ بعد** على قاعدة بياناتك (لذلك `getProfile` يرجع خطأ).
+- `src/lib/auth.ts` فيه دالة `upsertFromPi` التي تحفظ المستخدم في `profiles` بعد تسجيل الدخول عبر Pi، لكنها تستخدم عمود `id uuid` وليس `pi_user_id` كمفتاح أساسي.
 
-## الإصلاحات
+## المخطط النهائي للجدول
+حسب طلبك (`pi_user_id` كمفتاح أساسي بدل uuid منفصل):
 
-### 1. تحميل Pi SDK في `index.html`
-إضافة وسم في `<head>`:
-```html
-<script src="https://sdk.minepi.com/pi-sdk.js"></script>
-```
+| العمود | النوع | ملاحظات |
+|---|---|---|
+| `pi_user_id` | `text` | **PRIMARY KEY** |
+| `username` | `text` | NOT NULL |
+| `trust_score` | `integer` | DEFAULT 500 |
+| `created_at` | `timestamptz` | DEFAULT now() |
+| `privacy_accepted` | `boolean` | DEFAULT false |
 
-### 2. تحديث `src/lib/pi.ts`
-- توسيع نوع `authenticate` ليقبل صلاحية `payments`.
-- تغيير الاستدعاء إلى `Pi.authenticate(['username', 'payments'], onIncompletePaymentFound)`.
-- إبقاء `sandbox: true` و `appId` من `VITE_PI_APP_ID`.
-- إضافة فحص واضح: إذا لم يوجد `window.Pi` → رمي خطأ `PI_BROWSER_REQUIRED` مع رسالة مفهومة.
+## الخطوات
 
-### 3. تحديث `src/pages/Index.tsx`
-- في `handleSignIn`:
-  - فحص `isPiBrowser()` أولاً وعرض رسالة واضحة بالعربية إذا كان المستخدم خارج Pi Browser (مع إبقاء وضع التطوير الحالي).
-  - استدعاء `piAuthenticate()` ثم `upsertFromPi(uid, username)`.
-  - عند الفشل: عرض `toast.error` برسالة مترجمة + `console.error` للتفاصيل.
-  - عند النجاح: الانتقال إلى `/dashboard`.
+### 1. تحديث `supabase/schema.sql`
+إعادة كتابة الملف ليطابق المخطط أعلاه (إزالة عمود `id uuid` واستخدام `pi_user_id` كمفتاح أساسي مباشرة) مع سياسات RLS:
+- `SELECT`: عام (لأن الـ profile بطاقة سمعة عامة).
+- `INSERT` / `UPDATE`: مسموح للجميع في المرحلة الأولى (مع تعليق تحذيري بنقلها لاحقاً خلف Edge Function تتحقق من Pi token).
 
-### 4. عرض اسم المستخدم في `src/pages/Dashboard.tsx`
-- إضافة ترحيب بارز في الأعلى: "مرحباً @username" مع أيقونة.
-- التأكد من أن البيانات تُقرأ من `profile.username` المحفوظ في Supabase.
+### 2. تحديث `src/lib/supabase.ts`
+تعديل `ProfileRow` لإزالة `id` وجعل `pi_user_id` هو المعرّف الأساسي.
 
-### 5. ترجمات `src/i18n.ts`
-إضافة مفاتيح:
-- `auth.piRequired`: "هذا التطبيق يتطلب فتحه داخل Pi Browser لتسجيل الدخول."
-- `auth.signInFailed`: "فشل تسجيل الدخول عبر Pi. حاول مرة أخرى."
-- `auth.welcome`: "مرحباً، @{{username}}"
+### 3. تحديث `src/lib/auth.ts`
+- `upsertFromPi(uid, username)`:
+  - SELECT حسب `pi_user_id`.
+  - إذا وُجد المستخدم → إرجاعه كما هو (الحفاظ على `trust_score`).
+  - إذا لم يوجد → INSERT صف جديد بـ `trust_score = 500` (قيمة افتراضية ثابتة بدل العشوائية، لتطابق طلبك).
+- `getProfile()` و `acceptPrivacy()`: تبقى تستخدم `pi_user_id` (لا تغيير في المنطق).
 
-## ملاحظات
-- لا تغييرات على Supabase أو RLS.
-- `payments` scope مطلوبة الآن استعداداً للمرحلة الثانية (التوكن/الاشتراك)، لكن لن نستخدمها فعلياً بعد.
-- الاختبار الحقيقي يتطلب فتح الرابط داخل Pi Browser في وضع Sandbox من Pi Developer Portal.
+### 4. تنظيف رسائل التصحيح المؤقتة
+إزالة `alert()` التشخيصية في `supabase.ts` و `auth.ts` (تركتها من جلسة سابقة) — الإبقاء فقط على `console.log` / `console.error`.
+
+## ما عليك فعله بعد الموافقة
+1. افتح **Supabase Dashboard → SQL Editor**.
+2. انسخ محتوى `supabase/schema.sql` المحدَّث ونفّذه.
+3. ارجع للتطبيق واضغط **Sign in with Pi** — سيتم إنشاء صفك تلقائياً عند أول تسجيل دخول.
+
+## ما هو خارج هذه الخطة
+- إنشاء Edge Function للتحقق من Pi access token (مرحلة لاحقة).
+- تشفير أو إخفاء `pi_user_id` (يُعتبر معرّفاً عاماً في Pi).
 
