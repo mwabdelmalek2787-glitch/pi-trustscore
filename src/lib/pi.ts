@@ -4,7 +4,7 @@ declare global {
     Pi?: {
       init: (opts: { version: string; sandbox?: boolean; appId?: string }) => void;
       authenticate: (
-        scopes: string[],
+        scopes: Array<"username" | "payments" | "wallet_address">,
         onIncompletePaymentFound: (payment: unknown) => void,
       ) => Promise<{ accessToken: string; user: { uid: string; username: string } }>;
     };
