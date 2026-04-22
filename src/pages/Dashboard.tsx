@@ -48,17 +48,20 @@ const Dashboard = () => {
         }
       />
       <main className="container py-8">
-        <div className="mb-6 flex items-end justify-between">
-          <div>
+        <div className="mb-6 flex items-end justify-between gap-3">
+          <div className="min-w-0">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">{t("dashboard.title")}</p>
-            <h1 className="mt-1 text-2xl font-bold sm:text-3xl">@{profile.username}</h1>
+            <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold sm:text-3xl">
+              <span aria-hidden>👋</span>
+              <span className="truncate">{t("auth.welcome", { username: profile.username })}</span>
+            </h1>
           </div>
           <Button
             onClick={() => {
               console.log("[Dashboard] View Profile clicked → /profile/me");
               navigate("/profile/me");
             }}
-            className="btn-brand gap-2"
+            className="btn-brand gap-2 shrink-0"
           >
             {t("dashboard.viewProfile")} <ArrowRight className="h-4 w-4 rtl:rotate-180" />
           </Button>
