@@ -19,14 +19,20 @@ function setSessionPiUid(uid: string) {
 
 export async function getProfile(): Promise<Profile | null> {
   const uid = getSessionPiUid();
+  console.log("[auth.getProfile] session pi_user_id =", uid);
   if (!uid) return null;
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
     .eq("pi_user_id", uid)
     .maybeSingle();
+  console.log("[auth.getProfile] supabase response", { data, error });
   if (error) {
-    console.error("getProfile error", error);
+    console.error("[auth.getProfile] error", error);
+    if (typeof window !== "undefined") {
+      // TEMP debug — remove after fix verified
+      alert(`[DEBUG] Supabase getProfile error: ${error.message}`);
+    }
     return null;
   }
   return (data as Profile) ?? null;

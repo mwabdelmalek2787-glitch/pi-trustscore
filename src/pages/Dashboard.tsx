@@ -53,7 +53,13 @@ const Dashboard = () => {
             <p className="text-xs uppercase tracking-wider text-muted-foreground">{t("dashboard.title")}</p>
             <h1 className="mt-1 text-2xl font-bold sm:text-3xl">@{profile.username}</h1>
           </div>
-          <Button onClick={() => navigate("/profile/me")} className="btn-brand gap-2">
+          <Button
+            onClick={() => {
+              console.log("[Dashboard] View Profile clicked → /profile/me");
+              navigate("/profile/me");
+            }}
+            className="btn-brand gap-2"
+          >
             {t("dashboard.viewProfile")} <ArrowRight className="h-4 w-4 rtl:rotate-180" />
           </Button>
         </div>

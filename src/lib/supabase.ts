@@ -6,8 +6,15 @@ const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 if (!url || !anon) {
   // eslint-disable-next-line no-console
   console.error(
-    "Supabase env vars missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local",
+    "[supabase] env vars missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local",
   );
+  if (typeof window !== "undefined") {
+    // TEMP debug — remove after fix verified
+    alert("[DEBUG] Supabase env vars missing. Check .env.local and restart dev server.");
+  }
+} else {
+  // eslint-disable-next-line no-console
+  console.log("[supabase] client initialised", { url });
 }
 
 export const supabase = createClient(url ?? "", anon ?? "", {

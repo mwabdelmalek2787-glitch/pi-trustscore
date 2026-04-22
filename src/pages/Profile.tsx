@@ -22,16 +22,32 @@ const Profile = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileT | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log("[Profile] mount");
     (async () => {
-      const p = await getProfile();
-      if (!p || !p.privacy_accepted) {
-        navigate("/", { replace: true });
-        return;
+      try {
+        const p = await getProfile();
+        console.log("[Profile] getProfile result", p);
+        if (!p) {
+          setErrorMsg("Profile not found. Check console / Supabase table.");
+          setLoading(false);
+          return;
+        }
+        if (!p.privacy_accepted) {
+          setErrorMsg("Privacy not accepted. Returning to home…");
+          setLoading(false);
+          setTimeout(() => navigate("/", { replace: true }), 1500);
+          return;
+        }
+        setProfile(p);
+        setLoading(false);
+      } catch (e) {
+        console.error("[Profile] unexpected error", e);
+        setErrorMsg(String((e as Error)?.message ?? e));
+        setLoading(false);
       }
-      setProfile(p);
-      setLoading(false);
     })();
   }, [navigate]);
 
@@ -42,7 +58,41 @@ const Profile = () => {
   const ratings = useMemo(() => (profile ? recentRatings(profile.pi_user_id) : []), [profile]);
   const ai = profile ? aiSentiment(profile.pi_user_id) : 0.5;
 
-  if (loading || !profile) return null;
+  if (loading) {
+    return (
+      <div className="min-h-screen">
+        <Header />
+        <main className="container py-12 text-center text-sm text-muted-foreground">
+          Loading profile…
+        </main>
+      </div>
+    );
+  }
+
+  if (errorMsg || !profile) {
+    return (
+      <div className="min-h-screen">
+        <Header
+          right={
+            <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-2">
+              <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
+              <span className="hidden sm:inline">{t("profile.back")}</span>
+            </Button>
+          }
+        />
+        <main className="container py-12">
+          <div className="glass mx-auto max-w-md rounded-2xl p-6 text-center">
+            <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-destructive" />
+            <p className="font-semibold">Could not load profile</p>
+            <p className="mt-2 text-sm text-muted-foreground">{errorMsg ?? "Unknown error"}</p>
+            <Button onClick={() => navigate("/dashboard")} className="btn-brand mt-6">
+              Back to dashboard
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   const score = profile.trust_score;
   const showPure = score > 700 && ai > 0.5;
