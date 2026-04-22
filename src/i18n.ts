@@ -20,6 +20,11 @@ const resources = {
           "By using Trust Score, you agree to share your Pi username with us to create your public reputation profile. We do not access your wallet, payments, or private keys. We store only your username, trust score, and ratings activity. You can request deletion at any time.",
         agree: "I Agree & Continue",
       },
+      auth: {
+        piRequired: "This app must be opened inside Pi Browser to sign in.",
+        signInFailed: "Pi sign-in failed. Please try again.",
+        welcome: "Welcome, @{{username}}",
+      },
       dashboard: {
         title: "Dashboard",
         trustScore: "Trust Score",
