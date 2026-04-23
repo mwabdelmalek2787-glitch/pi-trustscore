@@ -33,12 +33,10 @@ export function ensurePiInit() {
 
 export async function piAuthenticate() {
   if (!isPiBrowser()) {
-    const err = new Error("PI_BROWSER_REQUIRED");
-    console.error("[pi] window.Pi not found — must be opened in Pi Browser");
-    throw err;
+    throw new Error("PI_BROWSER_REQUIRED");
   }
   ensurePiInit();
-  return window.Pi!.authenticate(["username", "payments"], (payment) => {
-    console.warn("[pi] Incomplete payment found", payment);
+  return window.Pi!.authenticate(["username", "payments"], () => {
+    // Incomplete payment callback — no-op for now.
   });
 }

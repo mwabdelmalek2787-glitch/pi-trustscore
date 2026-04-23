@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { TrustGauge } from "@/components/TrustGauge";
 import { clearProfile, getProfile, type Profile } from "@/lib/auth";
 import { recentRatings } from "@/lib/mock";
-import { ArrowRight, LogOut, MessageSquare, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowRight, Loader2, LogOut, MessageSquare, TrendingDown, TrendingUp } from "lucide-react";
 
 const Dashboard = () => {
   const { t, i18n } = useTranslation();
@@ -28,7 +28,14 @@ const Dashboard = () => {
 
   const ratings = useMemo(() => (profile ? recentRatings(profile.pi_user_id) : []), [profile]);
 
-  if (loading || !profile) return null;
+  if (loading || !profile) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">{t("common.loading")}</span>
+      </div>
+    );
+  }
 
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString(i18n.language, { month: "short", day: "numeric" });
@@ -57,10 +64,7 @@ const Dashboard = () => {
             </h1>
           </div>
           <Button
-            onClick={() => {
-              console.log("[Dashboard] View Profile clicked → /profile/me");
-              navigate("/profile/me");
-            }}
+            onClick={() => navigate("/profile/me")}
             className="btn-brand gap-2 shrink-0"
           >
             {t("dashboard.viewProfile")} <ArrowRight className="h-4 w-4 rtl:rotate-180" />
