@@ -1,49 +1,78 @@
 
 
-# ربط Supabase وإنشاء جدول `profiles`
+# خطة تحسين وتنظيف المشروع
 
-## الوضع الحالي
-- `src/lib/supabase.ts` متصل بمشروع Supabase (`qtakxhpkkijppceyzdsl`) باستخدام publishable anon key.
-- `supabase/schema.sql` يحتوي بالفعل على تعريف جدول `profiles` لكن **لم يُنفَّذ بعد** على قاعدة بياناتك (لذلك `getProfile` يرجع خطأ).
-- `src/lib/auth.ts` فيه دالة `upsertFromPi` التي تحفظ المستخدم في `profiles` بعد تسجيل الدخول عبر Pi، لكنها تستخدم عمود `id uuid` وليس `pi_user_id` كمفتاح أساسي.
+## 1. تنظيف رسائل التصحيح (Debug Cleanup)
+- **`src/lib/supabase.ts`**: إزالة `console.log("[supabase] client initialised", ...)`.
+- **`src/lib/auth.ts`**: إزالة `console.log` التشخيصية في `getProfile` و `upsertFromPi` — الإبقاء فقط على `console.error` للأخطاء الفعلية.
+- **`src/pages/Index.tsx`**: إزالة `console.log` غير الضرورية (`[Index] Calling Pi.authenticate...`, `[Index] Pi auth success`, `console.warn` للتطوير) — الإبقاء على `console.error` للفشل.
+- **`src/pages/Dashboard.tsx`**: إزالة `console.log("[Dashboard] View Profile clicked...")`.
+- **`src/lib/pi.ts`**: مراجعة وإزالة أي `console.log` غير ضرورية، مع الإبقاء على أخطاء التهيئة.
+- البحث عن أي `alert()` متبقٍ في الكود وإزالته.
 
-## المخطط النهائي للجدول
-حسب طلبك (`pi_user_id` كمفتاح أساسي بدل uuid منفصل):
+## 2. نقل مفاتيح Supabase إلى متغيرات البيئة
 
-| العمود | النوع | ملاحظات |
-|---|---|---|
-| `pi_user_id` | `text` | **PRIMARY KEY** |
-| `username` | `text` | NOT NULL |
-| `trust_score` | `integer` | DEFAULT 500 |
-| `created_at` | `timestamptz` | DEFAULT now() |
-| `privacy_accepted` | `boolean` | DEFAULT false |
+### الملفات التي ستتغير:
+- **`src/lib/supabase.ts`**:
+  ```ts
+  const url = import.meta.env.VITE_SUPABASE_URL as string;
+  const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+  if (!url || !anon) {
+    throw new Error("Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY");
+  }
+  ```
+- **`src/vite-env.d.ts`**: إضافة تعريفات TypeScript للمتغيرات الجديدة:
+  ```ts
+  interface ImportMetaEnv {
+    readonly VITE_SUPABASE_URL: string;
+    readonly VITE_SUPABASE_ANON_KEY: string;
+  }
+  ```
+- **`.env.example`**: إضافة `VITE_SUPABASE_URL` و `VITE_SUPABASE_ANON_KEY` كأمثلة.
 
-## الخطوات
+### ⚠️ ملاحظة مهمة للمستخدم
+متغيرات `VITE_*` ليست أسراراً حقيقية — يتم تضمينها في bundle الواجهة الأمامية ويستطيع أي زائر للموقع رؤيتها. anon key محمي بـ RLS لذا هذا آمن من ناحية الأمن، لكن:
+- **Lovable Cloud Secrets** مخصصة لـ Edge Functions (server-side)، وليست متاحة تلقائياً لمتغيرات `VITE_*` في build الواجهة.
+- لجعل `VITE_SUPABASE_URL` يعمل فعلياً في البناء، ستحتاج إضافتها كـ **Build Secret** في **Workspace Settings → Build Secrets** (وليس Cloud Secrets العادية).
+- سأضيف fallback في الكود: إذا لم توجد المتغيرات، يستخدم القيم الحالية مع `console.warn`، حتى لا ينكسر التطبيق قبل أن تضيفها.
 
-### 1. تحديث `supabase/schema.sql`
-إعادة كتابة الملف ليطابق المخطط أعلاه (إزالة عمود `id uuid` واستخدام `pi_user_id` كمفتاح أساسي مباشرة) مع سياسات RLS:
-- `SELECT`: عام (لأن الـ profile بطاقة سمعة عامة).
-- `INSERT` / `UPDATE`: مسموح للجميع في المرحلة الأولى (مع تعليق تحذيري بنقلها لاحقاً خلف Edge Function تتحقق من Pi token).
+## 3. الإنشاء التلقائي للملف الشخصي بعد تسجيل دخول Pi
 
-### 2. تحديث `src/lib/supabase.ts`
-تعديل `ProfileRow` لإزالة `id` وجعل `pi_user_id` هو المعرّف الأساسي.
+تحديث **`src/lib/auth.ts`** → `upsertFromPi(uid, username)`:
+- البحث عن الصف بـ `pi_user_id`.
+- إذا وُجد → إرجاعه (الحفاظ على `trust_score` الحالي).
+- إذا لم يوجد → INSERT جديد بالقيم الافتراضية:
+  - `trust_score = 0` (تغيير من 500 الحالية حسب طلبك)
+  - `created_at = now()` (تلقائي عبر default في الجدول)
+  - `privacy_accepted = false`
+- توحيد منطق الإنشاء داخل دالة واحدة `ensureProfile()` لتسهيل الاختبار.
 
-### 3. تحديث `src/lib/auth.ts`
-- `upsertFromPi(uid, username)`:
-  - SELECT حسب `pi_user_id`.
-  - إذا وُجد المستخدم → إرجاعه كما هو (الحفاظ على `trust_score`).
-  - إذا لم يوجد → INSERT صف جديد بـ `trust_score = 500` (قيمة افتراضية ثابتة بدل العشوائية، لتطابق طلبك).
-- `getProfile()` و `acceptPrivacy()`: تبقى تستخدم `pi_user_id` (لا تغيير في المنطق).
+## 4. مؤشر تحميل (Loading Spinner) أثناء جلب البيانات
 
-### 4. تنظيف رسائل التصحيح المؤقتة
-إزالة `alert()` التشخيصية في `supabase.ts` و `auth.ts` (تركتها من جلسة سابقة) — الإبقاء فقط على `console.log` / `console.error`.
+- **`src/pages/Dashboard.tsx`**: استبدال `if (loading || !profile) return null;` بـ:
+  ```tsx
+  <div className="flex min-h-screen items-center justify-center">
+    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    <span className="ml-3 text-muted-foreground">{t("common.loading")}</span>
+  </div>
+  ```
+- **`src/pages/Index.tsx`**: تحسين زر تسجيل الدخول ليُظهر `Loader2` بدلاً من نص ثابت أثناء `loading`.
+- **`src/i18n.ts`**: إضافة مفتاح `common.loading` بثلاث لغات:
+  - EN: "Loading…"
+  - AR: "جارٍ التحميل…"
+  - FR: "Chargement…"
 
-## ما عليك فعله بعد الموافقة
-1. افتح **Supabase Dashboard → SQL Editor**.
-2. انسخ محتوى `supabase/schema.sql` المحدَّث ونفّذه.
-3. ارجع للتطبيق واضغط **Sign in with Pi** — سيتم إنشاء صفك تلقائياً عند أول تسجيل دخول.
+## ملخص الملفات المعدَّلة
+- `src/lib/supabase.ts`
+- `src/lib/auth.ts`
+- `src/lib/pi.ts`
+- `src/pages/Index.tsx`
+- `src/pages/Dashboard.tsx`
+- `src/vite-env.d.ts`
+- `src/i18n.ts`
+- `.env.example`
 
-## ما هو خارج هذه الخطة
+## خارج النطاق
 - إنشاء Edge Function للتحقق من Pi access token (مرحلة لاحقة).
-- تشفير أو إخفاء `pi_user_id` (يُعتبر معرّفاً عاماً في Pi).
+- تغيير سياسات RLS.
 
