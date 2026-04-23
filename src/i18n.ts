@@ -6,6 +6,7 @@ const resources = {
   en: {
     translation: {
       app: { name: "Trust Score", tagline: "Your reputation, verified." },
+      common: { loading: "Loading…" },
       landing: {
         title: "Build trust on Pi Network",
         subtitle:
@@ -56,6 +57,7 @@ const resources = {
   ar: {
     translation: {
       app: { name: "درجة الثقة", tagline: "سمعتك، موثّقة." },
+      common: { loading: "جارٍ التحميل…" },
       landing: {
         title: "ابنِ الثقة على شبكة Pi",
         subtitle:
@@ -105,6 +107,7 @@ const resources = {
   fr: {
     translation: {
       app: { name: "Trust Score", tagline: "Votre réputation, vérifiée." },
+      common: { loading: "Chargement…" },
       landing: {
         title: "Bâtissez la confiance sur Pi Network",
         subtitle:
