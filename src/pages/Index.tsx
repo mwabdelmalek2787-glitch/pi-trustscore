@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PrivacyModal } from "@/components/PrivacyModal";
 import { isPiBrowser, piAuthenticate } from "@/lib/pi";
 import { acceptPrivacy, getProfile, upsertFromPi } from "@/lib/auth";
-import { ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
+import { Loader2, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
 const Index = () => {
@@ -32,16 +32,13 @@ const Index = () => {
     setLoading(true);
     try {
       if (!inPi) {
-        console.warn("[Index] Not in Pi Browser — using dev fallback");
         toast.info(t("landing.outsidePi"));
         const mock = await upsertFromPi("dev-uid-001", "dev_user");
         if (mock.privacy_accepted) navigate("/dashboard");
         else setShowPrivacy(true);
         return;
       }
-      console.log("[Index] Calling Pi.authenticate(['username','payments'])");
       const auth = await piAuthenticate();
-      console.log("[Index] Pi auth success:", auth.user);
       const p = await upsertFromPi(auth.user.uid, auth.user.username);
       toast.success(t("auth.welcome", { username: auth.user.username }));
       if (p.privacy_accepted) navigate("/dashboard");
@@ -83,7 +80,15 @@ const Index = () => {
           disabled={loading}
           className="btn-brand mt-10 h-14 px-10 text-base font-semibold"
         >
-          <ShieldCheck className="h-5 w-5" /> {t("landing.signIn")}
+          {loading ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" /> {t("common.loading")}
+            </>
+          ) : (
+            <>
+              <ShieldCheck className="h-5 w-5" /> {t("landing.signIn")}
+            </>
+          )}
         </Button>
 
         {!inPi && (

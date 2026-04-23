@@ -19,14 +19,12 @@ function setSessionPiUid(uid: string) {
 
 export async function getProfile(): Promise<Profile | null> {
   const uid = getSessionPiUid();
-  console.log("[auth.getProfile] session pi_user_id =", uid);
   if (!uid) return null;
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
     .eq("pi_user_id", uid)
     .maybeSingle();
-  console.log("[auth.getProfile] supabase response", { data, error });
   if (error) {
     console.error("[auth.getProfile] error", error);
     return null;
@@ -42,10 +40,12 @@ export function clearProfile() {
   }
 }
 
-export async function upsertFromPi(uid: string, username: string): Promise<Profile> {
-  setSessionPiUid(uid);
-
-  // Try to find existing first to preserve trust_score.
+/**
+ * Ensures a profile row exists for the given Pi user.
+ * Returns the existing row (preserving trust_score) or inserts a new one
+ * with default values (trust_score = 0, privacy_accepted = false).
+ */
+async function ensureProfile(uid: string, username: string): Promise<Profile> {
   const { data: existing, error: selectError } = await supabase
     .from("profiles")
     .select("*")
@@ -53,7 +53,7 @@ export async function upsertFromPi(uid: string, username: string): Promise<Profi
     .maybeSingle();
 
   if (selectError) {
-    console.error("[auth.upsertFromPi] select error", selectError);
+    console.error("[auth.ensureProfile] select error", selectError);
   }
 
   if (existing) return existing as Profile;
@@ -62,7 +62,7 @@ export async function upsertFromPi(uid: string, username: string): Promise<Profi
     pi_user_id: uid,
     username,
     privacy_accepted: false,
-    trust_score: 500,
+    trust_score: 0,
   };
 
   const { data, error } = await supabase
@@ -72,10 +72,15 @@ export async function upsertFromPi(uid: string, username: string): Promise<Profi
     .single();
 
   if (error || !data) {
-    console.error("[auth.upsertFromPi] insert error", error);
+    console.error("[auth.ensureProfile] insert error", error);
     throw error ?? new Error("Failed to create profile");
   }
   return data as Profile;
+}
+
+export async function upsertFromPi(uid: string, username: string): Promise<Profile> {
+  setSessionPiUid(uid);
+  return ensureProfile(uid, username);
 }
 
 export async function acceptPrivacy(): Promise<void> {
