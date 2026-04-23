@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 export const Header = ({ right }: { right?: React.ReactNode }) => {
   const { t } = useTranslation();
   return (
-    <header className="sticky top-0 z-40 border-b border-border/40 bg-background/60 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-border/40 bg-background/60 backdrop-blur-xl pt-[env(safe-area-inset-top)]">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-[hsl(var(--primary-glow))] text-primary-foreground shadow-[var(--shadow-glow)]">

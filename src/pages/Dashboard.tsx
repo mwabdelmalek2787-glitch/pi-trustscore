@@ -54,7 +54,7 @@ const Dashboard = () => {
           </Button>
         }
       />
-      <main className="container py-8">
+      <main className="container py-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
         <div className="mb-6 flex items-end justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">{t("dashboard.title")}</p>
@@ -71,7 +71,7 @@ const Dashboard = () => {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <section className="glass rounded-2xl p-6">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
               {t("dashboard.trustScore")}
@@ -89,7 +89,7 @@ const Dashboard = () => {
                 return (
                   <li
                     key={r.id}
-                    className="flex items-start gap-3 rounded-xl border border-border/50 bg-card/40 p-3"
+                    className="flex items-start gap-3 rounded-xl border border-border/50 bg-card/40 p-3 transition hover:border-primary/40 hover:bg-card/60"
                   >
                     <div
                       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
