@@ -19,11 +19,10 @@ let initialized = false;
 export function isPiBrowser(): boolean {
   if (typeof window === "undefined") return false;
   if (!window.Pi) return false;
-  // Heuristic: the Pi Browser sets a recognizable UA token.
+  // Require the real Pi Browser UA. Presence of `window.Pi` alone is not
+  // sufficient — anyone can inject a fake SDK from DevTools.
   const ua = navigator.userAgent || "";
-  return /PiBrowser/i.test(ua) || /minepi/i.test(ua) || true;
-  // NOTE: kept permissive (|| true) so SDK presence alone qualifies; the UA
-  // check exists so we can flip sandbox accordingly below.
+  return /PiBrowser/i.test(ua) || /minepi/i.test(ua);
 }
 
 /** Use sandbox only when the SDK is present but UA does NOT look like Pi Browser. */

@@ -41,9 +41,8 @@ const Profile = () => {
         }
         setProfile(p);
         setLoading(false);
-      } catch (e) {
-        console.error("[Profile] load failed");
-        setErrorMsg(String((e as Error)?.message ?? e));
+      } catch {
+        setErrorMsg("Something went wrong. Please try again.");
         setLoading(false);
       }
     })();
