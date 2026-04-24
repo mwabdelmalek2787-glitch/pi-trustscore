@@ -24,10 +24,7 @@ export async function getProfile(): Promise<Profile | null> {
     .select("*")
     .eq("pi_user_id", uid)
     .maybeSingle();
-  if (error) {
-    console.error("[auth] profile fetch failed:", error.code ?? error.message);
-    return null;
-  }
+  if (error) return null;
   return (data as Profile) ?? null;
 }
 
@@ -46,7 +43,7 @@ async function ensureProfile(uid: string, username: string): Promise<Profile> {
     .maybeSingle();
 
   if (selectError) {
-    console.error("[auth] profile lookup failed:", selectError.code ?? selectError.message);
+    // Swallow — caller surfaces a generic error to the user.
   }
 
   if (existing) return existing as Profile;
@@ -65,7 +62,6 @@ async function ensureProfile(uid: string, username: string): Promise<Profile> {
     .single();
 
   if (error || !data) {
-    console.error("[auth] profile create failed:", error?.code ?? error?.message);
     throw error ?? new Error("Failed to create profile");
   }
   return data as Profile;
@@ -82,6 +78,5 @@ export async function acceptPrivacy(): Promise<void> {
   // Use the SECURITY DEFINER RPC so we don't need a broad UPDATE policy on
   // the profiles table. The function only flips `privacy_accepted` for the
   // matching pi_user_id and is the single allowed write path from anon.
-  const { error } = await supabase.rpc("accept_privacy", { _pi_user_id: uid });
-  if (error) console.error("[auth] acceptPrivacy failed:", error.code ?? error.message);
+  await supabase.rpc("accept_privacy", { _pi_user_id: uid });
 }
