@@ -48,20 +48,37 @@ drop policy if exists "profiles_anon_update" on public.profiles;
 
 -- ---------------------------------------------------------------------------
 -- RPC: accept_privacy(_pi_user_id text)
--- The only allowed write path from the browser. Because it runs as the
--- function owner with `security definer`, it sidesteps RLS, but it can only
--- toggle privacy_accepted for the matching row — nothing else.
+-- The only allowed write path from the browser. SECURITY INVOKER so it cannot
+-- bypass RLS, plus it only flips privacy_accepted from false→true on a row
+-- that was created in the last 10 minutes. This narrows the previous abuse
+-- (anyone could forge consent for any known uid) to: only newly-signed-up
+-- users whose row is still "fresh" can be affected, and only the flag they
+-- were already going to set themselves.
+--
+-- Full mitigation requires verifying the Pi accessToken in an Edge Function
+-- and issuing a Supabase JWT so we can use auth.uid() — see TODO below.
 -- ---------------------------------------------------------------------------
 create or replace function public.accept_privacy(_pi_user_id text)
 returns void
 language sql
-security definer
+security invoker
 set search_path = public
 as $$
   update public.profiles
      set privacy_accepted = true
-   where pi_user_id = _pi_user_id;
+   where pi_user_id = _pi_user_id
+     and privacy_accepted = false
+     and created_at > now() - interval '10 minutes';
 $$;
+
+-- The RPC runs as the caller (security invoker), so it needs an UPDATE policy
+-- scoped to the same narrow conditions.
+drop policy if exists "profiles_anon_accept_privacy" on public.profiles;
+create policy "profiles_anon_accept_privacy"
+  on public.profiles for update
+  to anon, authenticated
+  using (privacy_accepted = false and created_at > now() - interval '10 minutes')
+  with check (privacy_accepted = true);
 
 revoke all on function public.accept_privacy(text) from public;
 grant execute on function public.accept_privacy(text) to anon, authenticated;
