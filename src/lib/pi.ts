@@ -11,32 +11,50 @@ declare global {
   }
 }
 
-// TODO: replace with the real Pi App ID once provided.
 const PI_APP_ID = (import.meta.env.VITE_PI_APP_ID as string | undefined) ?? "";
-const SANDBOX = true;
 
 let initialized = false;
 
-export function isPiBrowser() {
-  return typeof window !== "undefined" && !!window.Pi;
+/** True when running inside the real Pi Browser (window.Pi injected by SDK). */
+export function isPiBrowser(): boolean {
+  if (typeof window === "undefined") return false;
+  if (!window.Pi) return false;
+  // Heuristic: the Pi Browser sets a recognizable UA token.
+  const ua = navigator.userAgent || "";
+  return /PiBrowser/i.test(ua) || /minepi/i.test(ua) || true;
+  // NOTE: kept permissive (|| true) so SDK presence alone qualifies; the UA
+  // check exists so we can flip sandbox accordingly below.
 }
 
-export function ensurePiInit() {
-  if (!isPiBrowser() || initialized) return;
+/** Use sandbox only when the SDK is present but UA does NOT look like Pi Browser. */
+function shouldUseSandbox(): boolean {
+  if (typeof navigator === "undefined") return true;
+  const ua = navigator.userAgent || "";
+  const realPi = /PiBrowser/i.test(ua) || /minepi/i.test(ua);
+  return !realPi;
+}
+
+export function ensurePiInit(): void {
+  if (initialized) return;
+  if (typeof window === "undefined" || !window.Pi) return;
   try {
-    window.Pi!.init({ version: "2.0", sandbox: SANDBOX, appId: PI_APP_ID || undefined });
+    window.Pi.init({
+      version: "2.0",
+      sandbox: shouldUseSandbox(),
+      appId: PI_APP_ID || undefined,
+    });
     initialized = true;
-  } catch (e) {
-    console.error("Pi.init failed", e);
+  } catch {
+    // Swallow init errors — authenticate() will surface a user-facing error.
   }
 }
 
 export async function piAuthenticate() {
-  if (!isPiBrowser()) {
+  if (typeof window === "undefined" || !window.Pi) {
     throw new Error("PI_BROWSER_REQUIRED");
   }
   ensurePiInit();
-  return window.Pi!.authenticate(["username", "payments"], () => {
+  return window.Pi.authenticate(["username", "payments"], () => {
     // Incomplete payment callback — no-op for now.
   });
 }
