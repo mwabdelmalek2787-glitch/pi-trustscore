@@ -25,13 +25,11 @@ const Profile = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log("[Profile] mount");
     (async () => {
       try {
         const p = await getProfile();
-        console.log("[Profile] getProfile result", p);
         if (!p) {
-          setErrorMsg("Profile not found. Check console / Supabase table.");
+          setErrorMsg("Profile not found.");
           setLoading(false);
           return;
         }
@@ -44,7 +42,7 @@ const Profile = () => {
         setProfile(p);
         setLoading(false);
       } catch (e) {
-        console.error("[Profile] unexpected error", e);
+        console.error("[Profile] load failed");
         setErrorMsg(String((e as Error)?.message ?? e));
         setLoading(false);
       }

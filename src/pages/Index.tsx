@@ -32,10 +32,10 @@ const Index = () => {
     setLoading(true);
     try {
       if (!inPi) {
-        toast.info(t("landing.outsidePi"));
-        const mock = await upsertFromPi("dev-uid-001", "dev_user");
-        if (mock.privacy_accepted) navigate("/dashboard");
-        else setShowPrivacy(true);
+        // Outside the Pi Browser there is no trusted way to obtain a Pi user
+        // identity, so we refuse to sign in. The previous dev backdoor that
+        // wrote a fake "dev_user" profile has been removed.
+        toast.error(t("auth.piRequired"));
         return;
       }
       const auth = await piAuthenticate();
@@ -44,10 +44,10 @@ const Index = () => {
       if (p.privacy_accepted) navigate("/dashboard");
       else setShowPrivacy(true);
     } catch (e) {
-      console.error("[Index] Sign-in failed", e);
-      const msg = e instanceof Error && e.message === "PI_BROWSER_REQUIRED"
-        ? t("auth.piRequired")
-        : t("auth.signInFailed");
+      const msg =
+        e instanceof Error && e.message === "PI_BROWSER_REQUIRED"
+          ? t("auth.piRequired")
+          : t("auth.signInFailed");
       toast.error(msg);
     } finally {
       setLoading(false);
