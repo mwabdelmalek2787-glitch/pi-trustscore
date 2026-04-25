@@ -44,24 +44,23 @@ export const initPi = async (): Promise<void> => {
 
 export const authenticate = async (): Promise<any> => {
   await initPi();
-  console.log("Calling Pi.authenticate...");
-  return new Promise((resolve, reject) => {
-    let resolved = false;
-    const timeoutId = setTimeout(() => {
-      if (!resolved) {
-        console.error("Pi.authenticate timeout");
-        reject(new Error("Login timeout. Please check your Pi Browser and domain settings."));
-      }
-    }, 20000); // 20 seconds timeout
+  console.log("Calling Pi.authenticate with proper scopes...");
+  
+  // تعريف دالة رد النداء المطلوبة (حتى لو كانت فارغة)
+  const onIncompletePaymentFound = (payment: any) => {
+    console.log("Incomplete payment found:", payment);
+    // هنا يمكن إضافة منطق لمعالجة الدفعات غير المكتملة إذا لزم الأمر
+  };
 
-    Pi.authenticate(['username'], (err: any, auth: any) => {
-      resolved = true;
-      clearTimeout(timeoutId);
-      console.log("Pi.authenticate callback:", err ? "Error" : "Success");
-      if (err) reject(err);
-      else resolve(auth);
-    });
-  });
+  try {
+    // استخدام الصيغة الموصى بها مع Promise
+    const auth = await Pi.authenticate(['username', 'payments'], onIncompletePaymentFound);
+    console.log("Authentication successful:", auth);
+    return auth;
+  } catch (error) {
+    console.error("Authentication failed:", error);
+    throw error;
+  }
 };
 
 export const getCurrentUser = (): any => {
