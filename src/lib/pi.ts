@@ -47,14 +47,12 @@ export const authenticate = async (): Promise<any> => {
   console.log("Calling Pi.authenticate...");
   return new Promise((resolve, reject) => {
     let resolved = false;
-
-    // مهلة 20 ثانية في حال عدم استجابة الـ SDK
     const timeoutId = setTimeout(() => {
       if (!resolved) {
         console.error("Pi.authenticate timeout");
         reject(new Error("Login timeout. Please check your Pi Browser and domain settings."));
       }
-    }, 20000);
+    }, 20000); // 20 seconds timeout
 
     Pi.authenticate(['username'], (err: any, auth: any) => {
       resolved = true;
@@ -71,6 +69,6 @@ export const getCurrentUser = (): any => {
   return null;
 };
 
-// these two lines are REQUIRED by the old code in auth.ts and Profile.tsx
+// Aliases for compatibility
 export const ensurePiInit = initPi;
 export const piAuthenticate = authenticate;
