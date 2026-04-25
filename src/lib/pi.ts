@@ -10,7 +10,8 @@ let initPromise: Promise<void> | null = null;
 
 export const isPiBrowser = (): boolean => {
   if (typeof window === "undefined") return false;
-  return /(PiBrowser|Pi Browser|minepi)/i.test(navigator.userAgent);
+  if (typeof window.Pi !== "undefined") return true;
+  return /(PiBrowser|Pi Browser|PiNet|PiNetwork|minepi)/i.test(navigator.userAgent);
 };
 
 /** Wait until window.Pi is loaded (script tag in index.html). */
