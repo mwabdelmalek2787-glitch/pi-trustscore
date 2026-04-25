@@ -85,6 +85,6 @@ export const getCurrentUser = (): any => {
   return null;
 };
 
-// Aliases kept for compatibility.
-export const ensurePiInit = initPi;
+// Aliases for compatibility with existing imports
 export const piAuthenticate = authenticate;
+export const ensurePiInit = initPi;
