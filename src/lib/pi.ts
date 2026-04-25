@@ -5,22 +5,24 @@ let piInitialized = false;
 
 export const isPiBrowser = (): boolean => {
   if (typeof window === 'undefined') return false;
-  if (typeof Pi !== 'undefined') return true;
   const ua = navigator.userAgent;
   return /Pi Browser|PiBrowser/i.test(ua);
 };
 
-const waitForPi = (timeout = 5000): Promise<void> => {
+// انتظر تحميل SDK بشكل كامل
+const waitForPi = (timeout = 8000): Promise<void> => {
   return new Promise((resolve, reject) => {
-    if (typeof Pi !== 'undefined') return resolve();
+    if (typeof Pi !== 'undefined' && Pi.init) {
+      return resolve();
+    }
     const start = Date.now();
     const interval = setInterval(() => {
-      if (typeof Pi !== 'undefined') {
+      if (typeof Pi !== 'undefined' && Pi.init) {
         clearInterval(interval);
         resolve();
       } else if (Date.now() - start > timeout) {
         clearInterval(interval);
-        reject(new Error("Pi SDK timeout"));
+        reject(new Error("Pi SDK not loaded"));
       }
     }, 100);
   });
@@ -30,12 +32,14 @@ export const initPi = async (): Promise<void> => {
   if (piInitialized) return;
   try {
     await waitForPi();
+    console.log("Pi SDK ready, calling Pi.init...");
+    // Force sandbox = true للاختبار (حتى داخل Pi Browser)
     Pi.init({
       version: '2.0',
-      sandbox: !isPiBrowser(),
+      sandbox: true,   // تغيير مؤقت لضمان عمل المصادقة في وضع الاختبار
     });
     piInitialized = true;
-    console.log("Pi initialized, sandbox mode:", !isPiBrowser());
+    console.log("Pi.init completed successfully");
   } catch (err) {
     console.error("Pi init error:", err);
     throw err;
@@ -44,30 +48,29 @@ export const initPi = async (): Promise<void> => {
 
 export const authenticate = async (): Promise<any> => {
   await initPi();
-  console.log("Calling Pi.authenticate with proper scopes...");
-  
-  // تعريف دالة رد النداء المطلوبة (حتى لو كانت فارغة)
-  const onIncompletePaymentFound = (payment: any) => {
-    console.log("Incomplete payment found:", payment);
-    // هنا يمكن إضافة منطق لمعالجة الدفعات غير المكتملة إذا لزم الأمر
-  };
+  console.log("Calling Pi.authenticate...");
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error("Authentication timeout. Check Developer Portal settings."));
+    }, 20000);
 
-  try {
-    // استخدام الصيغة الموصى بها مع Promise
-    const auth = await Pi.authenticate(['username', 'payments'], onIncompletePaymentFound);
-    console.log("Authentication successful:", auth);
-    return auth;
-  } catch (error) {
-    console.error("Authentication failed:", error);
-    throw error;
-  }
+    Pi.authenticate(['username'], (err: any, auth: any) => {
+      clearTimeout(timeoutId);
+      if (err) {
+        console.error("Auth error:", err);
+        reject(err);
+      } else {
+        console.log("Auth success:", auth);
+        resolve(auth);
+      }
+    });
+  });
 };
 
 export const getCurrentUser = (): any => {
-  if (typeof Pi !== 'undefined' && Pi.currentUser) return Pi.currentUser;
-  return null;
+  return Pi?.currentUser || null;
 };
 
-// Aliases for compatibility
+// Aliases
 export const ensurePiInit = initPi;
 export const piAuthenticate = authenticate;
