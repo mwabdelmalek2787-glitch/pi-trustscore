@@ -1,59 +1,64 @@
-// Pi Network SDK helpers
-declare global {
-  interface Window {
-    Pi?: {
-      init: (opts: { version: string; sandbox?: boolean; appId?: string }) => void;
-      authenticate: (
-        scopes: Array<"username" | "payments" | "wallet_address">,
-        onIncompletePaymentFound: (payment: unknown) => void,
-      ) => Promise<{ accessToken: string; user: { uid: string; username: string } }>;
-    };
+// src/lib/pi.ts
+
+declare const Pi: any;
+
+let piInitialized = false;
+
+/**
+ * Detect if the app is running inside Pi Browser
+ */
+export const isPiBrowser = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return /Pi Browser/i.test(navigator.userAgent);
+};
+
+/**
+ * Initialize Pi SDK once
+ */
+export const initPi = (): void => {
+  if (piInitialized) return;
+  if (typeof Pi === 'undefined') {
+    console.warn("Pi SDK not loaded yet. Make sure Pi script is included.");
+    return;
   }
-}
 
-const PI_APP_ID = (import.meta.env.VITE_PI_APP_ID as string | undefined) ?? "";
-
-let initialized = false;
-
-/** True when running inside the real Pi Browser (window.Pi injected by SDK). */
-export function isPiBrowser(): boolean {
-  if (typeof window === "undefined") return false;
-  if (!window.Pi) return false;
-  // Require the real Pi Browser UA. Presence of `window.Pi` alone is not
-  // sufficient — anyone can inject a fake SDK from DevTools.
-  const ua = navigator.userAgent || "";
-  return /PiBrowser/i.test(ua) || /minepi/i.test(ua);
-}
-
-/** Use sandbox only when the SDK is present but UA does NOT look like Pi Browser. */
-function shouldUseSandbox(): boolean {
-  if (typeof navigator === "undefined") return true;
-  const ua = navigator.userAgent || "";
-  const realPi = /PiBrowser/i.test(ua) || /minepi/i.test(ua);
-  return !realPi;
-}
-
-export function ensurePiInit(): void {
-  if (initialized) return;
-  if (typeof window === "undefined" || !window.Pi) return;
   try {
-    window.Pi.init({
-      version: "2.0",
-      sandbox: shouldUseSandbox(),
-      appId: PI_APP_ID || undefined,
+    Pi.init({
+      version: '2.0',
+      // Use sandbox only in regular browsers; inside Pi Browser use real mode (sandbox: false)
+      sandbox: !isPiBrowser(),
     });
-    initialized = true;
-  } catch {
-    // Swallow init errors — authenticate() will surface a user-facing error.
+    piInitialized = true;
+    console.log("Pi SDK initialized, sandbox mode:", !isPiBrowser());
+  } catch (error) {
+    console.error("Failed to initialize Pi SDK:", error);
   }
-}
+};
 
-export async function piAuthenticate() {
-  if (typeof window === "undefined" || !window.Pi) {
-    throw new Error("PI_BROWSER_REQUIRED");
+/**
+ * Authenticate with Pi
+ * @returns Promise with auth object
+ */
+export const authenticate = async (): Promise<any> => {
+  initPi();
+  if (typeof Pi === 'undefined') {
+    throw new Error("Pi SDK not available");
   }
-  ensurePiInit();
-  return window.Pi.authenticate(["username", "payments"], () => {
-    // Incomplete payment callback — no-op for now.
+
+  return new Promise((resolve, reject) => {
+    Pi.authenticate(['username', 'payments'], (err: any, auth: any) => {
+      if (err) reject(err);
+      else resolve(auth);
+    });
   });
-}
+};
+
+/**
+ * Get current user from Pi (if already authenticated)
+ */
+export const getCurrentUser = (): any => {
+  if (typeof Pi !== 'undefined' && Pi.currentUser) {
+    return Pi.currentUser;
+  }
+  return null;
+};
