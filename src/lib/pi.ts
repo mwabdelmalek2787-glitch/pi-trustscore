@@ -62,3 +62,7 @@ export const getCurrentUser = (): any => {
   }
   return null;
 };
+
+// Backwards-compatible aliases used elsewhere in the app
+export const ensurePiInit = initPi;
+export const piAuthenticate = authenticate;
