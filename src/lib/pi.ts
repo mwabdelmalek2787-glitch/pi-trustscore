@@ -5,72 +5,39 @@ let piInitialized = false;
 
 export const isPiBrowser = (): boolean => {
   if (typeof window === 'undefined') return false;
-  const ua = navigator.userAgent;
-  return /Pi Browser|PiBrowser/i.test(ua);
+  return /Pi Browser/i.test(navigator.userAgent);
 };
 
-// انتظر تحميل SDK بشكل كامل
-const waitForPi = (timeout = 8000): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    if (typeof Pi !== 'undefined' && Pi.init) {
-      return resolve();
-    }
-    const start = Date.now();
-    const interval = setInterval(() => {
-      if (typeof Pi !== 'undefined' && Pi.init) {
-        clearInterval(interval);
-        resolve();
-      } else if (Date.now() - start > timeout) {
-        clearInterval(interval);
-        reject(new Error("Pi SDK not loaded"));
-      }
-    }, 100);
-  });
-};
-
-export const initPi = async (): Promise<void> => {
+export const initPi = () => {
   if (piInitialized) return;
-  try {
-    await waitForPi();
-    console.log("Pi SDK ready, calling Pi.init...");
-    // Force sandbox = true للاختبار (حتى داخل Pi Browser)
-    Pi.init({
-      version: '2.0',
-      sandbox: true,   // تغيير مؤقت لضمان عمل المصادقة في وضع الاختبار
-    });
-    piInitialized = true;
-    console.log("Pi.init completed successfully");
-  } catch (err) {
-    console.error("Pi init error:", err);
-    throw err;
+  if (typeof Pi === 'undefined') {
+    console.warn("Pi SDK not loaded yet.");
+    return;
   }
+  Pi.init({
+    version: '2.0',
+    sandbox: !isPiBrowser(), // true for regular browsers, false inside Pi Browser
+  });
+  piInitialized = true;
+  console.log("Pi SDK initialized, sandbox:", !isPiBrowser());
 };
 
 export const authenticate = async (): Promise<any> => {
-  await initPi();
-  console.log("Calling Pi.authenticate...");
+  initPi();
+  if (typeof Pi === 'undefined') throw new Error("Pi SDK not loaded");
   return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error("Authentication timeout. Check Developer Portal settings."));
-    }, 20000);
-
-    Pi.authenticate(['username'], (err: any, auth: any) => {
-      clearTimeout(timeoutId);
-      if (err) {
-        console.error("Auth error:", err);
-        reject(err);
-      } else {
-        console.log("Auth success:", auth);
-        resolve(auth);
-      }
+    Pi.authenticate(['username', 'payments'], (err: any, auth: any) => {
+      if (err) reject(err);
+      else resolve(auth);
     });
   });
 };
 
 export const getCurrentUser = (): any => {
-  return Pi?.currentUser || null;
+  if (typeof Pi !== 'undefined' && Pi.currentUser) return Pi.currentUser;
+  return null;
 };
 
-// Aliases
+// Aliases for compatibility with existing code (Profile.tsx uses these names)
 export const ensurePiInit = initPi;
 export const piAuthenticate = authenticate;
