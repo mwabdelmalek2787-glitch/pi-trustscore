@@ -44,8 +44,22 @@ export const initPi = async (): Promise<void> => {
 
 export const authenticate = async (): Promise<any> => {
   await initPi();
+  console.log("Calling Pi.authenticate...");
   return new Promise((resolve, reject) => {
-    Pi.authenticate(['username', 'payments'], (err: any, auth: any) => {
+    let resolved = false;
+
+    // مهلة 20 ثانية في حال عدم استجابة الـ SDK
+    const timeoutId = setTimeout(() => {
+      if (!resolved) {
+        console.error("Pi.authenticate timeout");
+        reject(new Error("Login timeout. Please check your Pi Browser and domain settings."));
+      }
+    }, 20000);
+
+    Pi.authenticate(['username'], (err: any, auth: any) => {
+      resolved = true;
+      clearTimeout(timeoutId);
+      console.log("Pi.authenticate callback:", err ? "Error" : "Success");
       if (err) reject(err);
       else resolve(auth);
     });
